@@ -9,9 +9,11 @@
     "stop:daemon": "pm2 stop tgbot && pm2 delete tgbot"
   },
   "dependencies": {
+    "@hono/node-server": "^1.11.2",
     "@tonconnect/sdk": "^3.0.0-beta.1",
     "dotenv": "^16.0.3",
     "grammy": "^1.24.0",
+    "hono": "^4.4.2",
     "qrcode": "^1.5.1",
     "redis": "^4.6.5"
   },
