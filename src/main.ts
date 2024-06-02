@@ -10,7 +10,7 @@ import {
     handleShowMyWalletCommand
 } from './commands-handlers';
 import { initRedisClient } from './ton-connect/storage';
-import TelegramBot from 'node-telegram-bot-api';
+import { CallbackQueryContext, Context } from 'grammy';
 
 async function main(): Promise<void> {
     await initRedisClient();
@@ -19,37 +19,38 @@ async function main(): Promise<void> {
         ...walletMenuCallbacks
     };
 
-    bot.on('callback_query', query => {
-        if (!query.data) {
+    bot.on('callback_query:data', ctx => {
+        if (!ctx.callbackQuery.data) {
             return;
         }
 
         let request: { method: string; data: string };
 
         try {
-            request = JSON.parse(query.data);
+            request = JSON.parse(ctx.callbackQuery.data);
         } catch {
             return;
         }
 
-        if (!callbacks[request.method as keyof typeof callbacks]) {
+        const method = request.method as keyof typeof callbacks;
+
+        if (!callbacks[method]) {
             return;
         }
 
-        callbacks[request.method as keyof typeof callbacks](query, request.data);
+        callbacks[method](ctx as CallbackQueryContext<Context>, request.data);
     });
 
-    bot.onText(/\/connect/, handleConnectCommand);
+    bot.command('connect', handleConnectCommand);
 
-    bot.onText(/\/send_tx/, handleSendTXCommand);
+    bot.command('send_tx', handleSendTXCommand);
 
-    bot.onText(/\/disconnect/, handleDisconnectCommand);
+    bot.command('disconnect', handleDisconnectCommand);
 
-    bot.onText(/\/my_wallet/, handleShowMyWalletCommand);
+    bot.command('my_wallet', handleShowMyWalletCommand);
 
-    bot.onText(/\/start/, (msg: TelegramBot.Message) => {
-        bot.sendMessage(
-            msg.chat.id,
+    bot.command('start', ctx => {
+        ctx.reply(
             `
 This is an example of a telegram bot for connecting to TON wallets and sending transactions with TonConnect.
             
@@ -63,6 +64,8 @@ GitHub: https://github.com/ton-connect/demo-telegram-bot
 `
         );
     });
+
+    bot.start();
 }
 
 main();

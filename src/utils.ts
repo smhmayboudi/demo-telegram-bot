@@ -1,5 +1,5 @@
 import { encodeTelegramUrlParameters, isTelegramUrl, WalletInfoRemote } from '@tonconnect/sdk';
-import { InlineKeyboardButton } from 'node-telegram-bot-api';
+import { InlineKeyboardButton } from 'grammy/types';
 
 export const AT_WALLET_APP_NAME = 'telegram-wallet';
 

@@ -1,26 +1,28 @@
-import TelegramBot, { CallbackQuery } from 'node-telegram-bot-api';
 import { getWalletInfo, getWallets } from './ton-connect/wallets';
-import { bot } from './bot';
 import { getConnector } from './ton-connect/connector';
 import QRCode from 'qrcode';
 import * as fs from 'fs';
-import { isTelegramUrl, isWalletInfoRemote } from '@tonconnect/sdk';
+import { isTelegramUrl } from '@tonconnect/sdk';
 import { addTGReturnStrategy, buildUniversalKeyboard } from './utils';
+import { CallbackQueryContext, Context, InputFile } from 'grammy';
 
 export const walletMenuCallbacks = {
     chose_wallet: onChooseWalletClick,
     select_wallet: onWalletClick,
     universal_qr: onOpenUniversalQRClick
 };
-async function onChooseWalletClick(query: CallbackQuery, _: string): Promise<void> {
+async function onChooseWalletClick(ctx: CallbackQueryContext<Context>, _: string): Promise<void> {
     const wallets = await getWallets();
 
-    await bot.editMessageReplyMarkup(
-        {
+    await ctx.editMessageReplyMarkup({
+        reply_markup: {
             inline_keyboard: [
                 wallets.map(wallet => ({
                     text: wallet.name,
-                    callback_data: JSON.stringify({ method: 'select_wallet', data: wallet.appName })
+                    callback_data: JSON.stringify({
+                        method: 'select_wallet',
+                        data: wallet.appName
+                    })
                 })),
                 [
                     {
@@ -31,15 +33,16 @@ async function onChooseWalletClick(query: CallbackQuery, _: string): Promise<voi
                     }
                 ]
             ]
-        },
-        {
-            message_id: query.message?.message_id,
-            chat_id: query.message?.chat.id
         }
-    );
+    });
 }
 
-async function onOpenUniversalQRClick(query: CallbackQuery, _: string): Promise<void> {
+async function onOpenUniversalQRClick(
+    ctx: CallbackQueryContext<Context>,
+    _: string
+): Promise<void> {
+    const query = ctx.callbackQuery;
+
     const chatId = query.message!.chat.id;
     const wallets = await getWallets();
 
@@ -47,22 +50,20 @@ async function onOpenUniversalQRClick(query: CallbackQuery, _: string): Promise<
 
     const link = connector.connect(wallets);
 
-    await editQR(query.message!, link);
+    await editQR(ctx, link);
 
     const keyboard = await buildUniversalKeyboard(link, wallets);
 
-    await bot.editMessageReplyMarkup(
-        {
+    await ctx.editMessageReplyMarkup({
+        reply_markup: {
             inline_keyboard: [keyboard]
-        },
-        {
-            message_id: query.message?.message_id,
-            chat_id: query.message?.chat.id
         }
-    );
+    });
 }
 
-async function onWalletClick(query: CallbackQuery, data: string): Promise<void> {
+async function onWalletClick(ctx: CallbackQueryContext<Context>, data: string): Promise<void> {
+    const query = ctx.callbackQuery;
+
     const chatId = query.message!.chat.id;
     const connector = getConnector(chatId);
 
@@ -83,10 +84,10 @@ async function onWalletClick(query: CallbackQuery, data: string): Promise<void> 
         qrLink = addTGReturnStrategy(qrLink, 'none');
     }
 
-    await editQR(query.message!, qrLink);
+    await editQR(ctx, qrLink);
 
-    await bot.editMessageReplyMarkup(
-        {
+    await ctx.editMessageReplyMarkup({
+        reply_markup: {
             inline_keyboard: [
                 [
                     {
@@ -99,29 +100,20 @@ async function onWalletClick(query: CallbackQuery, data: string): Promise<void> 
                     }
                 ]
             ]
-        },
-        {
-            message_id: query.message?.message_id,
-            chat_id: chatId
         }
-    );
+    });
 }
 
-async function editQR(message: TelegramBot.Message, link: string): Promise<void> {
-    const fileName = 'QR-code-' + Math.round(Math.random() * 10000000000);
+async function editQR(ctx: CallbackQueryContext<Context>, link: string): Promise<void> {
+    const fileName = 'QRCode-' + Math.round(Math.random() * 10000000000) + '.png';
 
-    await QRCode.toFile(`./${fileName}`, link);
+    const image = await QRCode.toBuffer(link);
+    const inputFile = new InputFile(image);
 
-    await bot.editMessageMedia(
-        {
-            type: 'photo',
-            media: `attach://${fileName}`
-        },
-        {
-            message_id: message?.message_id,
-            chat_id: message?.chat.id
-        }
-    );
+    await ctx.editMessageMedia({
+        type: 'photo',
+        media: inputFile
+    });
 
     await new Promise(r => fs.rm(`./${fileName}`, r));
 }

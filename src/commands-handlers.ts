@@ -1,15 +1,14 @@
 import { CHAIN, isTelegramUrl, toUserFriendlyAddress, UserRejectsError } from '@tonconnect/sdk';
-import { bot } from './bot';
 import { getWallets, getWalletInfo } from './ton-connect/wallets';
 import QRCode from 'qrcode';
-import TelegramBot from 'node-telegram-bot-api';
 import { getConnector } from './ton-connect/connector';
 import { addTGReturnStrategy, buildUniversalKeyboard, pTimeout, pTimeoutException } from './utils';
+import { CommandContext, Context, InputFile } from 'grammy';
 
 let newConnectRequestListenersMap = new Map<number, () => void>();
 
-export async function handleConnectCommand(msg: TelegramBot.Message): Promise<void> {
-    const chatId = msg.chat.id;
+export async function handleConnectCommand(ctx: CommandContext<Context>): Promise<void> {
+    const chatId = ctx.chat.id;
     let messageWasDeleted = false;
 
     newConnectRequestListenersMap.get(chatId)?.();
@@ -25,8 +24,7 @@ export async function handleConnectCommand(msg: TelegramBot.Message): Promise<vo
         const connectedName =
             (await getWalletInfo(connector.wallet!.device.appName))?.name ||
             connector.wallet!.device.appName;
-        await bot.sendMessage(
-            chatId,
+        await ctx.reply(
             `You have already connect ${connectedName} wallet\nYour address: ${toUserFriendlyAddress(
                 connector.wallet!.account.address,
                 connector.wallet!.account.chain === CHAIN.TESTNET
@@ -42,7 +40,7 @@ export async function handleConnectCommand(msg: TelegramBot.Message): Promise<vo
 
             const walletName =
                 (await getWalletInfo(wallet.device.appName))?.name || wallet.device.appName;
-            await bot.sendMessage(chatId, `${walletName} wallet connected successfully`);
+            await ctx.reply(`${walletName} wallet connected successfully`);
             unsubscribe();
             newConnectRequestListenersMap.delete(chatId);
         }
@@ -52,10 +50,11 @@ export async function handleConnectCommand(msg: TelegramBot.Message): Promise<vo
 
     const link = connector.connect(wallets);
     const image = await QRCode.toBuffer(link);
+    const inputFile = new InputFile(image);
 
     const keyboard = await buildUniversalKeyboard(link, wallets);
 
-    const botMessage = await bot.sendPhoto(chatId, image, {
+    const botMessage = await ctx.replyWithPhoto(inputFile, {
         reply_markup: {
             inline_keyboard: [keyboard]
         }
@@ -64,7 +63,7 @@ export async function handleConnectCommand(msg: TelegramBot.Message): Promise<vo
     const deleteMessage = async (): Promise<void> => {
         if (!messageWasDeleted) {
             messageWasDeleted = true;
-            await bot.deleteMessage(chatId, botMessage.message_id);
+            await ctx.api.deleteMessage(chatId, botMessage.message_id);
         }
     };
 
@@ -77,14 +76,14 @@ export async function handleConnectCommand(msg: TelegramBot.Message): Promise<vo
     });
 }
 
-export async function handleSendTXCommand(msg: TelegramBot.Message): Promise<void> {
-    const chatId = msg.chat.id;
+export async function handleSendTXCommand(ctx: CommandContext<Context>): Promise<void> {
+    const chatId = ctx.chat.id;
 
     const connector = getConnector(chatId);
 
     await connector.restoreConnection();
     if (!connector.connected) {
-        await bot.sendMessage(chatId, 'Connect wallet to send transaction');
+        await ctx.reply('Connect wallet to send transaction');
         return;
     }
 
@@ -103,20 +102,20 @@ export async function handleSendTXCommand(msg: TelegramBot.Message): Promise<voi
         Number(process.env.DELETE_SEND_TX_MESSAGE_TIMEOUT_MS)
     )
         .then(() => {
-            bot.sendMessage(chatId, `Transaction sent successfully`);
+            ctx.reply(`Transaction sent successfully`);
         })
         .catch(e => {
             if (e === pTimeoutException) {
-                bot.sendMessage(chatId, `Transaction was not confirmed`);
+                ctx.reply(`Transaction was not confirmed`);
                 return;
             }
 
             if (e instanceof UserRejectsError) {
-                bot.sendMessage(chatId, `You rejected the transaction`);
+                ctx.reply(`You rejected the transaction`);
                 return;
             }
 
-            bot.sendMessage(chatId, `Unknown error happened`);
+            ctx.reply(`Unknown error happened`);
         })
         .finally(() => connector.pauseConnection());
 
@@ -132,8 +131,7 @@ export async function handleSendTXCommand(msg: TelegramBot.Message): Promise<voi
         deeplink = addTGReturnStrategy(url.toString(), process.env.TELEGRAM_BOT_LINK!);
     }
 
-    await bot.sendMessage(
-        chatId,
+    await ctx.reply(
         `Open ${walletInfo?.name || connector.wallet!.device.appName} and confirm transaction`,
         {
             reply_markup: {
@@ -150,30 +148,30 @@ export async function handleSendTXCommand(msg: TelegramBot.Message): Promise<voi
     );
 }
 
-export async function handleDisconnectCommand(msg: TelegramBot.Message): Promise<void> {
-    const chatId = msg.chat.id;
+export async function handleDisconnectCommand(ctx: CommandContext<Context>): Promise<void> {
+    const chatId = ctx.chat.id;
 
     const connector = getConnector(chatId);
 
     await connector.restoreConnection();
     if (!connector.connected) {
-        await bot.sendMessage(chatId, "You didn't connect a wallet");
+        await ctx.reply("You didn't connect a wallet");
         return;
     }
 
     await connector.disconnect();
 
-    await bot.sendMessage(chatId, 'Wallet has been disconnected');
+    await ctx.reply('Wallet has been disconnected');
 }
 
-export async function handleShowMyWalletCommand(msg: TelegramBot.Message): Promise<void> {
-    const chatId = msg.chat.id;
+export async function handleShowMyWalletCommand(ctx: CommandContext<Context>): Promise<void> {
+    const chatId = ctx.chat.id;
 
     const connector = getConnector(chatId);
 
     await connector.restoreConnection();
     if (!connector.connected) {
-        await bot.sendMessage(chatId, "You didn't connect a wallet");
+        await ctx.reply("You didn't connect a wallet");
         return;
     }
 
@@ -181,8 +179,7 @@ export async function handleShowMyWalletCommand(msg: TelegramBot.Message): Promi
         (await getWalletInfo(connector.wallet!.device.appName))?.name ||
         connector.wallet!.device.appName;
 
-    await bot.sendMessage(
-        chatId,
+    await ctx.reply(
         `Connected wallet: ${walletName}\nYour address: ${toUserFriendlyAddress(
             connector.wallet!.account.address,
             connector.wallet!.account.chain === CHAIN.TESTNET

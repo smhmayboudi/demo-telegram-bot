@@ -11,12 +11,11 @@
   "dependencies": {
     "@tonconnect/sdk": "^3.0.0-beta.1",
     "dotenv": "^16.0.3",
-    "node-telegram-bot-api": "^0.61.0",
+    "grammy": "^1.24.0",
     "qrcode": "^1.5.1",
     "redis": "^4.6.5"
   },
   "devDependencies": {
-    "@types/node-telegram-bot-api": "^0.61.4",
     "@types/qrcode": "^1.5.0",
     "@typescript-eslint/eslint-plugin": "^5.38.1",
     "@typescript-eslint/parser": "^5.38.1",
