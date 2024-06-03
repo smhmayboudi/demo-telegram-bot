@@ -12,18 +12,29 @@ export class TonConnectStorage implements IStorage {
     constructor(private readonly chatId: number) {}
 
     private getKey(key: string): string {
+        console.log('getKey', key);
         return this.chatId.toString() + key;
     }
 
     async removeItem(key: string): Promise<void> {
-        await client.del(this.getKey(key));
+        key = this.getKey(key);
+        console.log('removeItem');
+        await client.del(key);
+        console.log('removeItem done');
     }
 
     async setItem(key: string, value: string): Promise<void> {
-        await client.set(this.getKey(key), value);
+        key = this.getKey(key);
+        console.log('setItem', key, value);
+        await client.set(key, value);
+        console.log('setItem done', key, value);
     }
 
     async getItem(key: string): Promise<string | null> {
-        return (await client.get(this.getKey(key))) || null;
+        key = this.getKey(key);
+        console.log('getItem', key);
+        const value = await client.get(key);
+        console.log('getItem', key, value);
+        return value;
     }
 }
