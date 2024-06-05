@@ -8,7 +8,8 @@ import {
     handleConnectCommand,
     handleDisconnectCommand,
     handleSendTXCommand,
-    handleShowMyWalletCommand
+    handleShowMyWalletCommand,
+    handleUploadCommand
 } from './commands-handlers';
 import { initRedisClient } from './ton-connect/storage';
 import { CallbackQueryContext, Context, GrammyError, HttpError, webhookCallback } from 'grammy';
@@ -54,6 +55,8 @@ async function main(): Promise<void> {
         bot.command('disconnect', handleDisconnectCommand);
 
         bot.command('my_wallet', handleShowMyWalletCommand);
+
+        bot.command('upload', handleUploadCommand);
 
         bot.command('start', ctx => {
             ctx.reply(
