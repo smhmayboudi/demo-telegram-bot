@@ -194,7 +194,7 @@ export async function handleShowMyWalletCommand(ctx: CommandContext<Context>): P
 export async function handleUploadCommand(ctx: CommandContext<Context>): Promise<void> {
     const readableStreamForFile = fs.createReadStream('./hi.jpeg');
     const pinataSDK = new PinataSDK({ pinataJWTKey: process.env.PINATA_JWT });
-    const pinataPinResponse = await pinataSDK.pinFileToIPFS(readableStreamForFile, {
+    const { IpfsHash } = await pinataSDK.pinFileToIPFS(readableStreamForFile, {
         pinataMetadata: {
             name: 'hi.jpeg'
         },
@@ -203,13 +203,7 @@ export async function handleUploadCommand(ctx: CommandContext<Context>): Promise
         }
     });
     await ctx.reply(
-        `https://ipfs.io/ipfs/${pinataPinResponse.IpfsHash} OR curl ipfs://${pinataPinResponse.IpfsHash} --ipfs-gateway ipfs.io
-        \nhttps://gateway.pinata.cloud/ipfs/${pinataPinResponse.IpfsHash} OR curl ipfs://${pinataPinResponse.IpfsHash} --ipfs-gateway gateway.pinata.cloud`
+        `https://ipfs.io/ipfs/${IpfsHash} OR curl ipfs://${IpfsHash} --ipfs-gateway ipfs.io
+        \nhttps://gateway.pinata.cloud/ipfs/${IpfsHash} OR curl ipfs://${IpfsHash} --ipfs-gateway gateway.pinata.cloud`
     );
-    // const helia = await createHelia();
-    // const fs = unixfs(helia);
-    // fs.addFile({
-    //     path: './hi.jpeg',
-    //     content: encoder.encode('d')
-    // });
 }
